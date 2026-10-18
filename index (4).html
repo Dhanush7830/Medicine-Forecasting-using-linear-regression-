@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E💊%3C/text%3E%3C/svg%3E">
+<title>Medicine Demand Forecasting: Linear Regression vs Random Forest</title>
+<meta name="description" content="Demand forecasting dashboard for medicines in chiller and dry storage, comparing linear regression and random forest models.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&amp;family=Figtree:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF3F5;--surface:#FFFFFF;--ink:#13232C;--muted:#5A6E78;--line:#D5E0E5;--c0:#A63D86;--c1:#1F8A8A;--c2:#B5413F;--c3:#C28A2C;--c4:#5E8C6A;
+  --chill:#2E7EA6;--forest:#6D4BC2;--zone-chill:#1D6286;--zone-dry:#6B5A3E;--zone-ink:#FFFFFF;--focus:#0B6BCB}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1A20;--surface:#16262E;--ink:#E8F0F3;--muted:#9AB0BA;--line:#27404B;--c0:#E07DB7;--c1:#4DC3C3;--c2:#E07573;--c3:#E8B45C;--c4:#8DBF6B;
+  --chill:#5AAFD6;--forest:#B79CFF;--zone-chill:#17506E;--zone-dry:#4A3F2C;--zone-ink:#F2F7FA;--focus:#6CB2FF}}
+:root[data-theme="dark"]{--bg:#0E1A20;--surface:#16262E;--ink:#E8F0F3;--muted:#9AB0BA;--line:#27404B;--c0:#E07DB7;--c1:#4DC3C3;--c2:#E07573;--c3:#E8B45C;--c4:#8DBF6B;
+  --chill:#5AAFD6;--forest:#B79CFF;--zone-chill:#17506E;--zone-dry:#4A3F2C;--zone-ink:#F2F7FA;--focus:#6CB2FF}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Bricolage Grotesque","Figtree",system-ui,sans-serif;margin:0;letter-spacing:-0.01em}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
+header.top{padding:36px 0 22px}
+header.top h1{font-size:clamp(2rem,5vw,3.25rem);font-weight:700;line-height:1.05;max-width:22ch}
+header.top p{margin:12px 0 0;max-width:68ch;color:var(--muted);font-size:1.05rem}
+.notice{margin-top:14px;display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:.85rem;color:var(--muted);background:var(--surface)}
+.zones{display:grid;grid-template-columns:1fr 1fr;border-radius:18px;overflow:hidden;margin-bottom:22px}
+.zone{padding:28px 28px 26px;color:var(--zone-ink)}
+.zone.chiller{background:var(--zone-chill)}.zone.dry{background:var(--zone-dry)}
+.zone .temp{font-size:.95rem;opacity:.85;margin:0 0 2px}.zone h2{font-size:1.5rem;font-weight:600}
+.zone .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:clamp(2.4rem,7vw,4.6rem);line-height:1;margin:18px 0 4px;letter-spacing:-0.03em}
+.zone .big small{font-size:.35em;font-weight:500;letter-spacing:0;margin-left:6px;opacity:.85}
+.zone .row{display:flex;gap:26px;flex-wrap:wrap;margin-top:14px;font-size:.95rem}
+.zone .row b{display:block;font-size:1.15rem;font-weight:600}.zone .row span{opacity:.8}
+nav.sticky{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-bottom:22px}
+nav.sticky .wrap{display:flex;gap:6px 22px;flex-wrap:wrap;padding-top:6px;padding-bottom:6px}
+nav.sticky a{color:var(--ink);text-decoration:none;font-weight:500;padding:8px 2px;border-bottom:2px solid transparent;min-height:40px;display:inline-flex;align-items:center}
+nav.sticky a:hover{border-bottom-color:var(--chill)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:34px}
+.kpi{padding:18px 18px 16px 0}.kpi + .kpi{padding-left:18px;border-left:1px solid var(--line)}
+.kpi span{display:block;font-size:.9rem;color:var(--muted)}
+.kpi b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:clamp(1.4rem,3vw,2.1rem);font-weight:700;margin-top:2px}
+section.block{margin-bottom:46px}
+section.block > h2{font-size:1.6rem;margin-bottom:6px}
+section.block > p.lead{margin:0 0 18px;color:var(--muted);max-width:72ch}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:28px 30px}
+figure{margin:0;min-width:0}figure.wide{grid-column:1 / -1}
+figcaption h3{font-size:1.05rem;font-weight:600}
+figcaption p{margin:2px 0 10px;color:var(--muted);font-size:.92rem;max-width:62ch}
+.ch{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--line)}
+.ch-dark{display:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ch-light{display:none}:root:not([data-theme="light"]) .ch-dark{display:block}}
+:root[data-theme="dark"] .ch-light{display:none}:root[data-theme="dark"] .ch-dark{display:block}
+.note{align-self:center;border-left:3px solid var(--forest);padding:4px 0 4px 18px;max-width:54ch}.note h3{font-size:1.05rem;margin-bottom:6px}.note p{margin:0 0 10px;color:var(--muted);font-size:.95rem}
+.model-stats{display:flex;gap:28px;flex-wrap:wrap;margin:0 0 22px}
+.model-stats div{padding-left:12px;border-left:3px solid var(--line)}
+.model-stats div.lr{border-left-color:var(--chill)}.model-stats div.rf{border-left-color:var(--forest)}
+.model-stats div b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:1.7rem}
+.model-stats div span{font-size:.88rem;color:var(--muted)}
+ol.steps{margin:0 0 24px;padding-left:22px;max-width:72ch}ol.steps li{margin:6px 0}
+.tablewrap{overflow-x:auto;border-top:2px solid var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:.93rem;min-width:760px}
+th,td{text-align:left;padding:10px 12px 10px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+th{white-space:normal;vertical-align:bottom;font-weight:600;color:var(--muted);font-size:.85rem}td:nth-child(1),td:nth-child(6){white-space:normal}
+td.num,th.num{text-align:right;padding-right:16px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+footer{padding:10px 0 46px;color:var(--muted);font-size:.9rem}footer p{max-width:84ch;margin:6px 0}
+@media (max-width:820px){.zones{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}
+  .kpi:nth-child(3){border-left:0;padding-left:0}.kpi:nth-child(n+3){border-top:1px solid var(--line)}.grid{grid-template-columns:1fr}}
+.ph{display:none;align-items:center;justify-content:center;text-align:center;min-height:200px;padding:20px;border:1px dashed var(--line);border-radius:10px;color:var(--muted);font-size:.88rem;background:var(--surface)}
+figure.nochart .ch{display:none!important}figure.nochart .ph{display:flex}
+</style></head>
+<body>
+<header class="top"><div class="wrap">
+  <h1>Medicine demand forecasting</h1>
+  <p>Medicines held in chiller (2 to 8 °C) and dry (15 to 25 °C) storage. Analysis of Oct 25 to Sep 26, two forecast models (linear regression and random forest) compared on months neither had seen, and a purchase plan for the next three months.</p>
+  <span class="notice">Sample data. Names and figures are illustrative.</span>
+</div></header>
+<div class="wrap"><div class="zones" aria-label="Stock in each storage zone at Sep 26"><div class="zone chiller"><p class="temp">2 to 8 °C</p><h2>Chiller</h2><div class="big">19,170<small>units in stock</small></div><div class="row"><div><b>AED 1.55M</b><span>stock value</span></div><div><b>25</b><span>items stored</span></div></div></div><div class="zone dry"><p class="temp">15 to 25 °C</p><h2>Dry</h2><div class="big">116,372<small>units in stock</small></div><div class="row"><div><b>AED 1.73M</b><span>stock value</span></div><div><b>40</b><span>items stored</span></div></div></div></div></div>
+<nav class="sticky" aria-label="Sections"><div class="wrap">
+  <a href="#analysis">Analysis</a><a href="#models">Models</a><a href="#forecast">Forecast</a><a href="#orders">Purchase plan</a></div></nav>
+<main class="wrap">
+  <div class="kpis"><div class="kpi"><span>Sales</span><b>AED 38.93M</b></div><div class="kpi"><span>Purchases</span><b>AED 35.46M</b></div><div class="kpi"><span>Units sold</span><b>1,475,550</b></div><div class="kpi"><span>Forecast Oct 26 to Dec 26</span><b>382,224 units</b></div></div>
+  <section class="block" id="analysis">
+    <h2>What the data shows</h2>
+    <p class="lead">Twelve months of customer orders, supplier purchases and month-end stock, analysed with Python.</p>
+    <div class="grid"><figure class=""><figcaption><h3>Sales and purchases by month</h3><p>Sales of AED 38.93M against purchases of AED 35.46M. Sales peaked in Nov 25.</p></figcaption><img class="ch ch-light" alt="Monthly sales and purchases in AED" src="images/monthly-sales-and-purchases-in-aed-light.png" loading="lazy"><img class="ch ch-dark" alt="Monthly sales and purchases in AED" src="images/monthly-sales-and-purchases-in-aed-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Sales by category</h3><p>Vaccines &amp; Biologics is the largest category at 27% of sales.</p></figcaption><img class="ch ch-light" alt="Monthly sales in AED stacked by category" src="images/monthly-sales-in-aed-stacked-by-category-light.png" loading="lazy"><img class="ch ch-dark" alt="Monthly sales in AED stacked by category" src="images/monthly-sales-in-aed-stacked-by-category-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Month-end stock value</h3><p>AED held in each storage zone. Chiller items are 47% of stock value in the latest month.</p></figcaption><img class="ch ch-light" alt="Month-end stock value by storage zone" src="images/month-end-stock-value-by-storage-zone-light.png" loading="lazy"><img class="ch ch-dark" alt="Month-end stock value by storage zone" src="images/month-end-stock-value-by-storage-zone-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Sales by customer type</h3><p>Healthcare Wholesaler customers bring the most sales, at 27% of the total.</p></figcaption><img class="ch ch-light" alt="Sales by customer type" src="images/sales-by-customer-type-light.png" loading="lazy"><img class="ch ch-dark" alt="Sales by customer type" src="images/sales-by-customer-type-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Top 10 products by sales value</h3><p>Influenza Vaccine Quadrivalent Syringe leads with AED 2.27M of sales over 12 months.</p></figcaption><img class="ch ch-light" alt="Top 10 products by sales value" src="images/top-10-products-by-sales-value-light.png" loading="lazy"><img class="ch ch-dark" alt="Top 10 products by sales value" src="images/top-10-products-by-sales-value-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Purchases by supplier</h3><p>Emirates MediSupply LLC receives the most spend, at 29% of purchases.</p></figcaption><img class="ch ch-light" alt="Purchases by supplier" src="images/purchases-by-supplier-light.png" loading="lazy"><img class="ch ch-dark" alt="Purchases by supplier" src="images/purchases-by-supplier-dark.png" loading="lazy"></figure><figure class="wide"><figcaption><h3>Seasonal pattern by category</h3><p>Units sold against each category's own average. Vaccines &amp; Biologics peak in Nov 25 at 255, which is why the models use season flags.</p></figcaption><img class="ch ch-light" alt="Monthly units sold by category indexed to the category average" src="images/monthly-units-sold-by-category-indexed-to-the-cate-light.png" loading="lazy"><img class="ch ch-dark" alt="Monthly units sold by category indexed to the category average" src="images/monthly-units-sold-by-category-indexed-to-the-cate-dark.png" loading="lazy"></figure></div>
+  </section>
+  <section class="block" id="models">
+    <h2>Linear regression against random forest</h2>
+    <ol class="steps">
+      <li>Added up the units sold for each medicine in each month: 780 product-months.</li>
+      <li>Gave both models the same inputs: last month's demand, the product's average so far, price, season flags (flu season, vaccine peak, summer, Ramadan, December), category, storage type and dosage form.</li>
+      <li>Trained each on Dec 25 to Jun 26 and tested on Jul 26 to Sep 26, months they had never seen. The random forest uses 300 trees with fixed settings, not tuned on the test months.</li>
+      <li>Compared both with two simple rules: repeat last month, or use the product's average.</li>
+      <li>Retrained both on all months to forecast Oct 26 to Dec 26.</li>
+    </ol>
+    <div class="model-stats"><div class="lr"><b>31.8%</b><span>Linear regression error (R² 0.71)</span></div><div class="rf"><b>30.3%</b><span>Random forest error (R² 0.71)</span></div><div class=""><b>33.3%</b><span>error if we repeat last month</span></div><div class=""><b>Random forest</b><span>used for the purchase plan</span></div></div>
+    <div class="grid"><figure class=""><figcaption><h3>All four methods compared</h3><p>Forecast error (WAPE) on the test months. Random forest has the lower error on the test months: 30.3% against 31.8% for the linear regression.</p></figcaption><img class="ch ch-light" alt="Forecast error of both models and two baselines" src="images/forecast-error-of-both-models-and-two-baselines-light.png" loading="lazy"><img class="ch ch-dark" alt="Forecast error of both models and two baselines" src="images/forecast-error-of-both-models-and-two-baselines-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Error by category</h3><p>The linear regression is better in 2 of 5 categories and the random forest in 3.</p></figcaption><img class="ch ch-light" alt="Forecast error by category for each model" src="images/forecast-error-by-category-for-each-model-light.png" loading="lazy"><img class="ch ch-dark" alt="Forecast error by category for each model" src="images/forecast-error-by-category-for-each-model-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Linear regression: actual against predicted</h3><p>Each dot is one product in one test month. Dots near the dashed line are accurate. R² is 0.71.</p></figcaption><img class="ch ch-light" alt="Scatter of actual and predicted demand, linear regression" src="images/scatter-of-actual-and-predicted-demand-linear-regr-light.png" loading="lazy"><img class="ch ch-dark" alt="Scatter of actual and predicted demand, linear regression" src="images/scatter-of-actual-and-predicted-demand-linear-regr-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Random forest: actual against predicted</h3><p>Same test months. R² is 0.71.</p></figcaption><img class="ch ch-light" alt="Scatter of actual and predicted demand, random forest" src="images/scatter-of-actual-and-predicted-demand-random-fore-light.png" loading="lazy"><img class="ch ch-dark" alt="Scatter of actual and predicted demand, random forest" src="images/scatter-of-actual-and-predicted-demand-random-fore-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>What the linear regression learned</h3><p>Largest effect: Price (pricier medicines sell fewer units). Blue bars raise predicted demand, red bars lower it.</p></figcaption><img class="ch ch-light" alt="Top ten linear regression coefficients" src="images/top-ten-linear-regression-coefficients-light.png" loading="lazy"><img class="ch ch-dark" alt="Top ten linear regression coefficients" src="images/top-ten-linear-regression-coefficients-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>What the random forest relies on</h3><p>Most used input: Product's average demand. Unlike the regression, the forest can combine inputs in non-linear ways.</p></figcaption><img class="ch ch-light" alt="Top ten random forest feature importances" src="images/top-ten-random-forest-feature-importances-light.png" loading="lazy"><img class="ch ch-dark" alt="Top ten random forest feature importances" src="images/top-ten-random-forest-feature-importances-dark.png" loading="lazy"></figure></div>
+  </section>
+  <section class="block" id="forecast">
+    <h2>Forecast</h2>
+    <p class="lead">The shaded test months show how each model did on data it had not seen. The dashed lines are the forecasts. The category chart and purchase plan use the model with the lower test error.</p>
+    <div class="grid"><figure class="wide"><figcaption><h3>Total demand: actual, test and forecast</h3><p>Forecast for Oct 26 to Dec 26: 404,527 units from the linear regression and 382,224 from the random forest.</p></figcaption><img class="ch ch-light" alt="Total monthly demand with test predictions and forecasts from both models" src="images/total-monthly-demand-with-test-predictions-and-for-light.png" loading="lazy"><img class="ch ch-dark" alt="Total monthly demand with test predictions and forecasts from both models" src="images/total-monthly-demand-with-test-predictions-and-for-dark.png" loading="lazy"></figure><figure class=""><figcaption><h3>Forecast by category (random forest)</h3><p>Vaccines &amp; Biologics 18,696, Diabetes &amp; Hormones 56,108, Cardio &amp; Critical Care 76,089, Anti-infectives 88,486, OTC &amp; Supplements 142,844 units over the three months.</p></figcaption><img class="ch ch-light" alt="Forecast demand by category compared with the latest actual month" src="images/forecast-demand-by-category-compared-with-the-late-light.png" loading="lazy"><img class="ch ch-dark" alt="Forecast demand by category compared with the latest actual month" src="images/forecast-demand-by-category-compared-with-the-late-dark.png" loading="lazy"></figure><div class="note"><h3>Reading the results</h3><p>Random forest has the lower error on the test months: 30.3% against 31.8% for the linear regression. The gap is 1.5 points, so on this much data the two are close. Demand for the typical medicine swings about 38% from month to month, which limits any simple model.</p><p>Dec 26 is the highest forecast month. Seasonal lifts were learned from a single year, so treat the forecast as an estimate. Expiry dates and supplier lead times are not model inputs, so check them before ordering.</p></div></div>
+  </section>
+  <section class="block" id="orders">
+    <h2>Purchase plan</h2>
+    <p class="lead">Based on the random forest forecast. Target stock is next month's forecast plus 25% safety stock. Stock is the month-end figure for Sep 26. 52 of 65 items fall short of target; the 15 largest orders are listed. Cold-chain items need suppliers that can ship at 2 to 8 °C.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Item</th><th>Storage</th><th class="num">In stock (units)</th><th class="num">Next month forecast (units)</th><th class="num">Suggested order (units)</th><th>Supplier</th><th class="num">Lead time (days)</th></tr></thead>
+      <tbody><tr><td><span class="dot" style="background:var(--c1)"></span>Metformin 500 mg Tablets</td><td>Dry</td><td class="num">6,101</td><td class="num">6,125</td><td class="num"><b>1,556</b></td><td>Rhine Pharma GmbH</td><td class="num">28</td></tr><tr><td><span class="dot" style="background:var(--c2)"></span>Aspirin 75 mg EC Tablets</td><td>Dry</td><td class="num">4,554</td><td class="num">4,716</td><td class="num"><b>1,341</b></td><td>Rhine Pharma GmbH</td><td class="num">28</td></tr><tr><td><span class="dot" style="background:var(--c2)"></span>Amlodipine 5 mg Tablets</td><td>Dry</td><td class="num">5,233</td><td class="num">5,189</td><td class="num"><b>1,254</b></td><td>Gangetic Generics Ltd</td><td class="num">20</td></tr><tr><td><span class="dot" style="background:var(--c3)"></span>Ceftriaxone 1 g Injection</td><td>Dry</td><td class="num">4,172</td><td class="num">4,337</td><td class="num"><b>1,250</b></td><td>Emirates MediSupply LLC</td><td class="num">2</td></tr><tr><td><span class="dot" style="background:var(--c3)"></span>Amoxicillin-Clavulanate 625 mg Tablets</td><td>Dry</td><td class="num">4,363</td><td class="num">4,375</td><td class="num"><b>1,106</b></td><td>Rhine Pharma GmbH</td><td class="num">28</td></tr><tr><td><span class="dot" style="background:var(--c3)"></span>Ciprofloxacin 500 mg Tablets</td><td>Dry</td><td class="num">3,813</td><td class="num">3,846</td><td class="num"><b>995</b></td><td>Gangetic Generics Ltd</td><td class="num">20</td></tr><tr><td><span class="dot" style="background:var(--c2)"></span>Bisoprolol 5 mg Tablets</td><td>Dry</td><td class="num">1,704</td><td class="num">2,097</td><td class="num"><b>918</b></td><td>Emirates MediSupply LLC</td><td class="num">2</td></tr><tr><td><span class="dot" style="background:var(--c0)"></span>Hepatitis B Vaccine 20 mcg</td><td>Chiller</td><td class="num">2,343</td><td class="num">2,539</td><td class="num"><b>832</b></td><td>Alpine Biotech AG</td><td class="num">21</td></tr><tr><td><span class="dot" style="background:var(--c3)"></span>Azithromycin 500 mg Tablets</td><td>Dry</td><td class="num">3,185</td><td class="num">3,190</td><td class="num"><b>803</b></td><td>Emirates MediSupply LLC</td><td class="num">2</td></tr><tr><td><span class="dot" style="background:var(--c2)"></span>Clopidogrel 75 mg Tablets</td><td>Dry</td><td class="num">2,162</td><td class="num">2,339</td><td class="num"><b>762</b></td><td>Emirates MediSupply LLC</td><td class="num">2</td></tr><tr><td><span class="dot" style="background:var(--c4)"></span>Dextromethorphan Cough Syrup 120 mL</td><td>Dry</td><td class="num">4,475</td><td class="num">4,187</td><td class="num"><b>759</b></td><td>Gangetic Generics Ltd</td><td class="num">20</td></tr><tr><td><span class="dot" style="background:var(--c4)"></span>Cetirizine 10 mg Tablets</td><td>Dry</td><td class="num">4,572</td><td class="num">4,251</td><td class="num"><b>742</b></td><td>Emirates MediSupply LLC</td><td class="num">2</td></tr><tr><td><span class="dot" style="background:var(--c1)"></span>Levothyroxine 100 mcg Tablets</td><td>Dry</td><td class="num">2,392</td><td class="num">2,482</td><td class="num"><b>711</b></td><td>Emirates MediSupply LLC</td><td class="num">2</td></tr><tr><td><span class="dot" style="background:var(--c4)"></span>Vitamin C 1000 mg Effervescent</td><td>Dry</td><td class="num">2,925</td><td class="num">2,879</td><td class="num"><b>674</b></td><td>Petra Pharma Industries</td><td class="num">10</td></tr><tr><td><span class="dot" style="background:var(--c4)"></span>Antiseptic Solution 500 mL</td><td>Dry</td><td class="num">1,307</td><td class="num">1,550</td><td class="num"><b>630</b></td><td>Gangetic Generics Ltd</td><td class="num">20</td></tr></tbody></table></div>
+  </section>
+</main>
+<footer><div class="wrap">
+  <p>Built with Python (pandas, scikit-learn, matplotlib) from six datasets: product master, customers, customer orders, suppliers, purchase orders and the monthly inventory ledger. All values are sample data generated for demonstration. Medicine names are generic and prices are illustrative.</p>
+  <p>Limits: both models have only 12 months of history, so neither can fully learn seasonal patterns, and a random forest cannot predict beyond the range it has seen. Two or more years of data would make the forecast more reliable.</p>
+</div></footer>
+<script>
+document.addEventListener('error',function(e){var i=e.target;if(!i||i.tagName!=='IMG')return;var f=i.closest('figure');if(!f||f.classList.contains('nochart'))return;
+f.classList.add('nochart');var d=document.createElement('div');d.className='ph';d.setAttribute('role','img');d.setAttribute('aria-label',i.alt);d.textContent='Chart image not found: '+i.getAttribute('src').replace(/-(light|dark)\.png$/,'')+' (add it to the images folder)';f.appendChild(d);},true);
+</script>
+</body></html>
